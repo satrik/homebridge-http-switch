@@ -35,6 +35,8 @@ function HTTP_SWITCH(log, config) {
     this.name = config.name;
     this.debug = config.debug || false;
 
+    this.savedState = false;
+    
     this.switchType = utils.enumValueOf(SwitchType, config.switchType, SwitchType.STATEFUL);
     if (!this.switchType) {
         this.log.warn(`'${this.switchType}' is a invalid switchType! Aborting...`);
@@ -350,6 +352,9 @@ HTTP_SWITCH.prototype = {
                 if (this.debug)
                     this.log("getStatus() doing http request...");
 
+                // callback the last saved state and update the (possible changed) real state after the request finished
+                callback(null, this.savedState);
+                
                 http.httpRequest(this.status, (error, response, body) => {
                     if (error) {
                         this.log("getStatus() failed: %s", error.message);
@@ -372,7 +377,9 @@ HTTP_SWITCH.prototype = {
                             this.log("Switch is currently %s", switchedOn? "ON": "OFF");
 
                         this.statusCache.queried(); // we only update lastQueried on successful query
-                        callback(null, switchedOn);
+                        
+                        this.homebridgeService.getCharacteristic(Characteristic.On).updateValue(switchedOn);
+                        this.savedState = switchedOn;
                     }
                 });
                 break;
